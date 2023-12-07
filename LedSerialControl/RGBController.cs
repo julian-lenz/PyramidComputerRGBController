@@ -26,6 +26,29 @@ public class RGBController
         Off
     }
 
+    class RgbwValue
+    {
+        public byte Red { get; set; }
+        public byte Green { get; set; }
+        public byte Blue { get; set; }
+        public byte White { get; set; }
+
+        public RgbwValue(byte r, byte g, byte b, byte w)
+        {
+            Red = r;
+            Green = g;
+            Blue = b;
+            White = w;
+        }
+
+        ///Overload Assignment operator from byte[] to RgbwValue
+        public static implicit operator RgbwValue(byte[] values)
+        {
+            return new RgbwValue(values[0], values[1], values[2], values[3]);
+        }
+    }
+    
+    
     /// <summary>
     /// Dictionary mapping ColorNames to their corresponding byte arrays.
     /// </summary>
@@ -55,19 +78,19 @@ public class RGBController
     private const byte _off = 0;
     private const byte _on = 1;
     
-    public bool Flashing;
+    // Properties for the current color and flashing state
+    RgbwValue _currentColor = new RgbwValue(0, 0, 0, 0);
+    public bool Flashing { get; private set; } = false;
     
     public void StartFlashing()
     {
-        if (!Flashing)
-            Flashing = true;
+        Flashing = true;
         SendCommand(_modeB0, _on);
     }
     
     public void StopFlashing()
     {
-        if (Flashing)
-            Flashing = false;
+        Flashing = false;
         SendCommand(_modeB0, _off);
     }
     /// <summary>
@@ -89,12 +112,14 @@ public class RGBController
         byte[] values = colorDictionaryRGBW[color];
         var argument = ConcatArrays(values, new byte[] { 0, 0, 0, 0 });
         SendCommand(_SetColorB0, argument);
+        _currentColor = values;
     }
     
     public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
     {
         byte[] values = { r, g, b, w, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
+        _currentColor = new RgbwValue(r, g, b, w);
     }
     
     /// <summary>
@@ -133,6 +158,8 @@ public class RGBController
         serialPort.StopBits = StopBits.One;
         serialPort.Parity = Parity.None;
         serialPort.Open();
+        StopFlashing();
+        SetColor(ColorNames.Off);
     }
 
     ~RGBController()
