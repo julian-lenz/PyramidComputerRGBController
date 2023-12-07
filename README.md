@@ -1,6 +1,5 @@
 # .Net Class for RGBController by Pyramid Computer
----
-#### Helperclass for controlling the RGB light controller from Pyramid Computer.
+### Helperclass for controlling the RGB light controller from Pyramid Computer.
 
 Uses System.IO.Ports, therefore **only running on Windows**.
 
