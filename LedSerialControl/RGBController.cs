@@ -79,7 +79,7 @@ public class RGBController
     private const byte _on = 1;
     
     // Properties for the current color and flashing state
-    RgbwValue _currentColor = new RgbwValue(0, 0, 0, 0);
+    RgbwValue _lastColor = new RgbwValue(0, 0, 0, 0);
     public bool Flashing { get; private set; } = false;
     
     public void StartFlashing()
@@ -112,14 +112,16 @@ public class RGBController
         byte[] values = colorDictionaryRGBW[color];
         var argument = ConcatArrays(values, new byte[] { 0, 0, 0, 0 });
         SendCommand(_SetColorB0, argument);
-        _currentColor = values;
+        if(color != ColorNames.Off)
+            _lastColor = values;
     }
     
     public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
     {
         byte[] values = { r, g, b, w, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
-        _currentColor = new RgbwValue(r, g, b, w);
+        if(r+g+b+w != 0)
+            _lastColor = new RgbwValue(r, g, b, w);
     }
     
     /// <summary>
@@ -139,6 +141,8 @@ public class RGBController
         byte white =  (byte)(w*255/100);
         byte[] values = { red, green, blue, white, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
+        if(r+g+b+w != 0)
+            _lastColor = new RgbwValue(red, green, blue, white);
     }
     
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
