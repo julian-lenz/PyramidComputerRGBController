@@ -29,17 +29,17 @@ public class RGBController
     /// <summary>
     /// Dictionary mapping ColorNames to their corresponding byte arrays.
     /// </summary>
-    private static readonly Dictionary<ColorNames, byte[]> colorDictionary = new Dictionary<ColorNames, byte[]>
+    private static readonly Dictionary<ColorNames, byte[]> colorDictionaryRGBW = new Dictionary<ColorNames, byte[]>
     {
-        { ColorNames.Red, new byte[] { 255, 0, 0 } } ,
-        { ColorNames.Green, new byte[] { 0, 255, 0 } },
-        { ColorNames.Blue, new byte[] { 0, 0, 255} },
-        { ColorNames.White, new byte[] { 255, 255, 255 } },
-        { ColorNames.Yellow, new byte[] { 255, 255, 0 } },
-        { ColorNames.Orange, new byte[] { 255, 165, 0 } },
-        { ColorNames.Cyan, new byte[] { 0, 255, 255 } },
-        { ColorNames.Magenta, new byte[] { 255, 0, 255 } },
-        { ColorNames.Off, new byte[] { 0, 0, 0 } }
+        { ColorNames.Red, new byte[] { 255, 0, 0, 0 } } ,
+        { ColorNames.Green, new byte[] { 0, 255, 0, 0 } },
+        { ColorNames.Blue, new byte[] { 0, 0, 255, 0 } },
+        { ColorNames.White, new byte[] { 0, 0, 0, 255 } },
+        { ColorNames.Yellow, new byte[] { 255, 255, 0, 0 } },
+        { ColorNames.Orange, new byte[] { 255, 165, 0, 0 } },
+        { ColorNames.Cyan, new byte[] { 0, 255, 255, 0 } },
+        { ColorNames.Magenta, new byte[] { 255, 0, 255, 0 } },
+        { ColorNames.Off, new byte[] { 0, 0, 0, 0 } }
     };
     
     private static int Baudrate { get; set; }
@@ -70,7 +70,11 @@ public class RGBController
             Flashing = false;
         SendCommand(_modeB0, _off);
     }
-    
+    /// <summary>
+    /// Sets the flashing period of the RGB LED strip.
+    /// Each Step is about 27ms
+    /// </summary>
+    /// <param name="period">The period to set the LED strip to. This is a byte value.</param>
     public void SetFlashingPeriod(byte period)
     {
         SendCommand(_flashingPeriod, period);
@@ -80,27 +84,41 @@ public class RGBController
     /// Sets the color of the RGB LED strip.
     /// </summary>
     /// <param name="color">The color to set the LED strip to. This is an enum value.</param>
-    public void SetColour(ColorNames color)
+    public void SetColor(ColorNames color)
     {
-        byte[] values = colorDictionary[color];
-        for(var i = 0; i<4; i++)
-            values[4+i] = 0; // fill with 0, see Documentation
+        byte[] values = colorDictionaryRGBW[color];
+        var argument = ConcatArrays(values, new byte[] { 0, 0, 0, 0 });
+        SendCommand(_SetColorB0, argument);
+    }
+    
+    public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
+    {
+        byte[] values = { r, g, b, w, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
     }
     
-    public void SetColorRgbw(byte r = 0, byte g = 0, byte b = 0, byte w = 0)
+    /// <summary>
+    /// Sets the color of the RGBW Module in Percent
+    /// </summary>
+    /// <param name="r">Value of Red</param>
+    /// <param name="g">Value of Green </param>
+    /// <param name="b">Value of Blue</param>
+    /// <param name="w">Value of White</param>
+    public void SetColorRgbwPercent( short r = 0, short g = 0, short b = 0, short w = 0)
     {
-        byte red = r;
-        byte green = g;
-        byte blue = b;
-        byte white = w;
+        if (r > 100 || g > 100 || b > 100 || w > 100 || r < 0 || g < 0 || b < 0 || w < 0)
+            throw new ArgumentException("Values must be between 0 and 100");
+        byte red = (byte)(r*255/100);
+        byte green =  (byte)(g*255/100);
+        byte blue =  (byte)(b*255/100);
+        byte white =  (byte)(w*255/100);
         byte[] values = { red, green, blue, white, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
     }
     
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
     {
-        byte[] values = ConcatArraysRef(colorDictionary[color1], colorDictionary[color2]);
+        byte[] values = ConcatArrays(colorDictionaryRGBW[color1], colorDictionaryRGBW[color2]);
         SendCommand(_changeFlashingColoursB0, values);
     }
     /// <summary>
@@ -130,9 +148,9 @@ public class RGBController
     /// <param name="arguments"></param>
     private void SendCommand(byte command, byte[] arguments)
     {
-        byte[] message = ConcatArraysRef(_startbits, new byte[] { command }, arguments, _endbits);
+        byte[] message = ConcatArrays(_startbits, new byte[] { command }, arguments, _endbits);
         serialPort.Write(message, 0, message.Length);
-        Console.Write("Sent Message: " + ByteArrayToHexString(message));
+        Console.Write($"Sent Message: {ByteArrayToHexString(message)}\n");
     }
     private void SendCommand(byte command, byte argument)
     {
@@ -144,7 +162,7 @@ public class RGBController
     /// </summary>
     /// <param name="arrays"></param>
     /// <returns></returns>
-    private static byte[] ConcatArraysRef(params byte[][] arrays)
+    private static byte[] ConcatArrays(params byte[][] arrays)
     {
         return arrays.SelectMany(arr => arr).ToArray();
     }
