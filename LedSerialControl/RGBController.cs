@@ -123,6 +123,18 @@ public class RGBController
         if(r+g+b+w != 0)
             _lastColor = new RgbwValue(r, g, b, w);
     }
+    private void SetColorRgbw(RgbwValue color)
+    {
+        SetColorRgbw(color.Red, color.Green, color.Blue, color.White);
+    }
+    
+    /// <summary>
+    /// Sets the static color of the Module to the last set color before turnoff (r=g=b=w=0)
+    /// </summary>
+    public void ResumeColor()
+    {
+        SetColorRgbw(_lastColor);
+    }
     
     /// <summary>
     /// Sets the color of the RGBW Module in Percent
@@ -144,6 +156,8 @@ public class RGBController
         if(r+g+b+w != 0)
             _lastColor = new RgbwValue(red, green, blue, white);
     }
+    
+
     
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
     {
