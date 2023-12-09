@@ -26,7 +26,26 @@ public class RGBController
         Off
     }
 
-    class RgbwValue
+    /// <summary>
+    /// Dictionary mapping ColorNames to their corresponding byte arrays.
+    /// </summary>
+    private static readonly Dictionary<ColorNames, byte[]> ColorDictionaryRgbw = new Dictionary<ColorNames, byte[]>
+    {
+        { ColorNames.Red, new byte[] { 255, 0, 0, 0 } } ,
+        { ColorNames.Green, new byte[] { 0, 255, 0, 0 } },
+        { ColorNames.Blue, new byte[] { 0, 0, 255, 0 } },
+        { ColorNames.White, new byte[] { 0, 0, 0, 255 } },
+        { ColorNames.Yellow, new byte[] { 255, 255, 0, 0 } },
+        { ColorNames.Orange, new byte[] { 255, 165, 0, 0 } },
+        { ColorNames.Cyan, new byte[] { 0, 255, 255, 0 } },
+        { ColorNames.Magenta, new byte[] { 255, 0, 255, 0 } },
+        { ColorNames.Off, new byte[] { 0, 0, 0, 0 } }
+    };
+    
+    /// <summary>
+    /// Struct representing a RGBW Value
+    /// </summary>
+    private class RgbwValue
     {
         public byte Red { get; set; }
         public byte Green { get; set; }
@@ -41,29 +60,21 @@ public class RGBController
             White = w;
         }
 
-        ///Overload Assignment operator from byte[] to RgbwValue
+        ///Overload assignment operator from byte[] to RgbwValue
+        /// <summary>
+        /// Overloaded assignment operator from byte[] to RgbwValue
+        /// </summary>
+        /// <param name="values">Byte Array of length 4 with values for {red, green, blue, white}</param>
         public static implicit operator RgbwValue(byte[] values)
         {
+            if (values.Length != 4)
+                throw new ArgumentException("Byte Array must be of length 4");
             return new RgbwValue(values[0], values[1], values[2], values[3]);
         }
     }
     
     
-    /// <summary>
-    /// Dictionary mapping ColorNames to their corresponding byte arrays.
-    /// </summary>
-    private static readonly Dictionary<ColorNames, byte[]> colorDictionaryRGBW = new Dictionary<ColorNames, byte[]>
-    {
-        { ColorNames.Red, new byte[] { 255, 0, 0, 0 } } ,
-        { ColorNames.Green, new byte[] { 0, 255, 0, 0 } },
-        { ColorNames.Blue, new byte[] { 0, 0, 255, 0 } },
-        { ColorNames.White, new byte[] { 0, 0, 0, 255 } },
-        { ColorNames.Yellow, new byte[] { 255, 255, 0, 0 } },
-        { ColorNames.Orange, new byte[] { 255, 165, 0, 0 } },
-        { ColorNames.Cyan, new byte[] { 0, 255, 255, 0 } },
-        { ColorNames.Magenta, new byte[] { 255, 0, 255, 0 } },
-        { ColorNames.Off, new byte[] { 0, 0, 0, 0 } }
-    };
+
     
     private static int Baudrate { get; set; }
     private const int Databits = 8;
@@ -71,69 +82,50 @@ public class RGBController
     
     private byte[] _startbits = StringToByteArray("5AFF");
     private byte[] _endbits = StringToByteArray("A5");
+    // Commands
     private byte _SetColorB0 = Convert.ToByte("CA", 16);
     private byte _changeFlashingColoursB0 = Convert.ToByte("D3", 16);
     private byte _modeB0 = Convert.ToByte("D6", 16);
     private byte _flashingPeriod = Convert.ToByte("E5", 16);
+    private byte _setID = Convert.ToByte("AE", 16);
+    private byte _readID = Convert.ToByte("BE", 16);
+    
     private const byte _off = 0;
     private const byte _on = 1;
     
     // Properties for the current color and flashing state
     RgbwValue _lastColor = new RgbwValue(0, 0, 0, 0);
+    RgbwValue _savedColor = new RgbwValue(0, 0, 0, 0);
     public bool Flashing { get; private set; } = false;
     
-    public void StartFlashing()
-    {
-        Flashing = true;
-        SendCommand(_modeB0, _on);
-    }
+
     
-    public void StopFlashing()
-    {
-        Flashing = false;
-        SendCommand(_modeB0, _off);
-    }
-    /// <summary>
-    /// Sets the flashing period of the RGB LED strip.
-    /// Each Step is about 27ms
-    /// </summary>
-    /// <param name="period">The period to set the LED strip to. This is a byte value.</param>
-    public void SetFlashingPeriod(byte period)
-    {
-        SendCommand(_flashingPeriod, period);
-    }
     
     /// <summary>
     /// Sets the color of the RGB LED strip.
     /// </summary>
-    /// <param name="color">The color to set the LED strip to. This is an enum value.</param>
+    /// <param name="color">The color to set the LED controller to. This is an enum value.</param>
     public void SetColor(ColorNames color)
     {
-        byte[] values = colorDictionaryRGBW[color];
+        byte[] values = ColorDictionaryRgbw[color];
         var argument = ConcatArrays(values, new byte[] { 0, 0, 0, 0 });
         SendCommand(_SetColorB0, argument);
-        if(color != ColorNames.Off)
-            _lastColor = values;
+        _lastColor = values;
     }
     
+    /// <summary>
+    /// Sets the color of the RGB controller in RGBW Values
+    /// </summary>
     public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
     {
         byte[] values = { r, g, b, w, 0, 0, 0, 0 };
         SendCommand(_SetColorB0, values);
-        if(r+g+b+w != 0)
-            _lastColor = new RgbwValue(r, g, b, w);
+        _lastColor = values;
     }
+    
     private void SetColorRgbw(RgbwValue color)
     {
         SetColorRgbw(color.Red, color.Green, color.Blue, color.White);
-    }
-    
-    /// <summary>
-    /// Sets the static color of the Module to the last set color before turnoff (r=g=b=w=0)
-    /// </summary>
-    public void ResumeColor()
-    {
-        SetColorRgbw(_lastColor);
     }
     
     /// <summary>
@@ -151,23 +143,83 @@ public class RGBController
         byte green =  (byte)(g*255/100);
         byte blue =  (byte)(b*255/100);
         byte white =  (byte)(w*255/100);
-        byte[] values = { red, green, blue, white, 0, 0, 0, 0 };
-        SendCommand(_SetColorB0, values);
-        if(r+g+b+w != 0)
-            _lastColor = new RgbwValue(red, green, blue, white);
+        SetColorRgbw(red, green, blue, white);
     }
     
+    /// <summary>
+    ///  Saves the current color of the controller internally, to resume to it later with ResumeColor()
+    /// </summary>
+    public void SaveColor()
+    {
+        _savedColor = _lastColor;
+    }
+    /// <summary>
+    /// Sets the static color of the Module to the last saved color. Saved via SaveColor()
+    /// </summary>
+    public void ResumeColor()
+    {
+        SetColorRgbw(_savedColor);
+    }
+    
+    /// <summary>
+    /// Sets the flashing mode of the RGB LED strip.
+    /// </summary>
+    /// <param name="flashing">True for flashing. False for static color</param>
+    public void SetFlashing(bool flashing)
+    {
+        if (flashing)
+            SendCommand(_modeB0, _on);
+        else
+            SendCommand(_modeB0, _off);
+        Flashing = flashing;
+    }
 
+    /// <summary>
+    /// Sets the flashing period of the RGB LED strip.
+    /// Each Step is about 27ms
+    /// </summary>
+    /// <param name="period">The period to set the LED strip to. This is a byte value.</param>
+    public void SetFlashingPeriod(byte period)
+    {
+        SendCommand(_flashingPeriod, period);
+    }
     
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
     {
-        byte[] values = ConcatArrays(colorDictionaryRGBW[color1], colorDictionaryRGBW[color2]);
+        byte[] values = ConcatArrays(ColorDictionaryRgbw[color1], ColorDictionaryRgbw[color2]);
         SendCommand(_changeFlashingColoursB0, values);
     }
+
+
+    public void SetID(byte id)
+    {
+        SendCommand(_setID, id);
+    }
+    
+    public int ReadID()
+    {
+        byte[] message = ConcatArrays(_startbits, new byte[] { _readID }, _endbits);
+        serialPort.Write(message, 0, message.Length);
+        try
+        {
+            int id = serialPort.ReadByte();
+            return id;
+        }
+        catch (Exception e)
+        {
+            if (e is TimeoutException)
+                return -1;
+            throw;
+        }
+        
+        
+    }
+    
+    
     /// <summary>
     /// Constructor for RGBController
     /// </summary>
-    /// <param name="portname">Commonly COMx, eg. COM4</param>
+    /// <param name="portname">Serial Port name. Commonly COMx, eg. COM4</param>
     public RGBController(string portname)
     {
         Baudrate = 9600;
@@ -176,7 +228,7 @@ public class RGBController
         serialPort.StopBits = StopBits.One;
         serialPort.Parity = Parity.None;
         serialPort.Open();
-        StopFlashing();
+        SetFlashing(false);
         SetColor(ColorNames.Off);
     }
 
@@ -194,13 +246,32 @@ public class RGBController
     private void SendCommand(byte command, byte[] arguments)
     {
         byte[] message = ConcatArrays(_startbits, new byte[] { command }, arguments, _endbits);
-        serialPort.Write(message, 0, message.Length);
-        Console.Write($"Sent Message: {ByteArrayToHexString(message)}\n");
+        try
+        {
+            serialPort.Write(message, 0, message.Length);
+            //Console.Write($"Sent Message: {ByteArrayToHexString(message)}\n");
+        }
+        catch (Exception e)
+        {
+            switch (e)
+            {
+                case TimeoutException _:
+                    throw new TimeoutException("Timeout while sending command");
+                case InvalidOperationException _:
+                    throw new InvalidOperationException("Serial Port is not open");
+            }
+            Console.WriteLine(e);
+            throw;
+        }
+        
     }
     private void SendCommand(byte command, byte argument)
     {
         SendCommand(command, new byte[] { argument });
     }
+    
+    
+    // Helper Functions for byte array handling
     
     /// <summary>
     /// Help function to concat multiple byte arrays
