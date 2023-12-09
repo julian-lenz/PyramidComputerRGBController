@@ -10,16 +10,15 @@ class Program
     { 
         const int fadetime = 1; 
         var rgbController = new LedSerialControl.RGBController("COM4");
-        rgbController.StopFlashing();
         rgbController.SetColorRgbw(0, 0, 0, 0);
         Thread.Sleep(500);
         rgbController.SetFlashingColors(RGBController.ColorNames.Yellow, RGBController.ColorNames.White);
         rgbController.SetFlashingPeriod(30);
-        rgbController.StartFlashing();
+        rgbController.SetFlashing(true);
         Thread.Sleep(6000);
         rgbController.SetFlashingPeriod(10);
         Thread.Sleep(3000);
-        rgbController.StopFlashing();
+        rgbController.SetFlashing(false);
         for (int i = 0; i < 2; i++)
         {
             // Start with red
