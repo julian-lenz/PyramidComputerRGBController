@@ -73,18 +73,26 @@ public class RGBController
         }
     }
     
-    
+    private enum Command
+    {
+        SetColor = 0xCA,
+        ChangeFlashingColors = 0xD3,
+        Mode = 0xD6,
+        FlashingPeriod = 0xE5,
+        SetID = 0xAE,
+        ReadID = 0xBE
+    }
 
     
-    private static int Baudrate { get; set; }
-    private const int Databits = 8;
-    private SerialPort serialPort;
+    private static int _baudrate { get; set; }
+    private const int _databits = 8;
+    private SerialPort _serialPort;
     
     private byte[] _startbits = StringToByteArray("5AFF");
     private byte[] _endbits = StringToByteArray("A5");
     // Commands
-    private byte _SetColorB0 = Convert.ToByte("CA", 16);
-    private byte _changeFlashingColoursB0 = Convert.ToByte("D3", 16);
+    private byte _setColorB0 = Convert.ToByte("CA", 16);
+    private byte _changeFlashingColorsB0 = Convert.ToByte("D3", 16);
     private byte _modeB0 = Convert.ToByte("D6", 16);
     private byte _flashingPeriod = Convert.ToByte("E5", 16);
     private byte _setID = Convert.ToByte("AE", 16);
@@ -94,8 +102,8 @@ public class RGBController
     private const byte _on = 1;
     
     // Properties for the current color and flashing state
-    RgbwValue _lastColor = new RgbwValue(0, 0, 0, 0);
-    RgbwValue _savedColor = new RgbwValue(0, 0, 0, 0);
+    private RgbwValue _lastColor = new RgbwValue(0, 0, 0, 0);
+    private RgbwValue _savedColor = new RgbwValue(0, 0, 0, 0);
     public bool Flashing { get; private set; } = false;
     
 
@@ -109,7 +117,7 @@ public class RGBController
     {
         byte[] values = ColorDictionaryRgbw[color];
         var argument = ConcatArrays(values, new byte[] { 0, 0, 0, 0 });
-        SendCommand(_SetColorB0, argument);
+        SendCommand(Command.SetColor, argument);
         _lastColor = values;
     }
     
@@ -119,7 +127,7 @@ public class RGBController
     public void SetColorRgbw( byte r = 0, byte g = 0, byte b = 0, byte w = 0)
     {
         byte[] values = { r, g, b, w, 0, 0, 0, 0 };
-        SendCommand(_SetColorB0, values);
+        SendCommand(Command.SetColor, values);
         _lastColor = values;
     }
     
@@ -168,9 +176,9 @@ public class RGBController
     public void SetFlashing(bool flashing)
     {
         if (flashing)
-            SendCommand(_modeB0, _on);
+            SendCommand(Command.Mode, _on);
         else
-            SendCommand(_modeB0, _off);
+            SendCommand(Command.Mode, _off);
         Flashing = flashing;
     }
 
@@ -181,28 +189,28 @@ public class RGBController
     /// <param name="period">The period to set the LED strip to. This is a byte value.</param>
     public void SetFlashingPeriod(byte period)
     {
-        SendCommand(_flashingPeriod, period);
+        SendCommand(Command.FlashingPeriod, period);
     }
     
     public void SetFlashingColors(ColorNames color1, ColorNames color2)
     {
         byte[] values = ConcatArrays(ColorDictionaryRgbw[color1], ColorDictionaryRgbw[color2]);
-        SendCommand(_changeFlashingColoursB0, values);
+        SendCommand(Command.ChangeFlashingColors, values);
     }
 
 
     public void SetID(byte id)
     {
-        SendCommand(_setID, id);
+        SendCommand(Command.ReadID, id);
     }
     
     public int ReadID()
     {
-        byte[] message = ConcatArrays(_startbits, new byte[] { _readID }, _endbits);
-        serialPort.Write(message, 0, message.Length);
+        byte[] message = ConcatArrays(_startbits, new byte[] { (byte)Command.ReadID }, _endbits);
+        _serialPort.Write(message, 0, message.Length);
         try
         {
-            int id = serialPort.ReadByte();
+            int id = _serialPort.ReadByte();
             return id;
         }
         catch (Exception e)
@@ -211,8 +219,6 @@ public class RGBController
                 return -1;
             throw;
         }
-        
-        
     }
     
     
@@ -222,19 +228,19 @@ public class RGBController
     /// <param name="portname">Serial Port name. Commonly COMx, eg. COM4</param>
     public RGBController(string portname)
     {
-        Baudrate = 9600;
-        serialPort = new SerialPort(portname, Baudrate);
-        serialPort.DataBits = Databits; // 8 data bits
-        serialPort.StopBits = StopBits.One;
-        serialPort.Parity = Parity.None;
-        serialPort.Open();
+        _baudrate = 9600;
+        _serialPort = new SerialPort(portname, _baudrate);
+        _serialPort.DataBits = _databits; // 8 data bits
+        _serialPort.StopBits = StopBits.One;
+        _serialPort.Parity = Parity.None;
+        _serialPort.Open();
         SetFlashing(false);
         SetColor(ColorNames.Off);
     }
 
     ~RGBController()
     {
-        serialPort.Close();
+        _serialPort.Close();
     }
 
 
@@ -243,12 +249,12 @@ public class RGBController
     /// </summary>
     /// <param name="command"></param>
     /// <param name="arguments"></param>
-    private void SendCommand(byte command, byte[] arguments)
+    private void SendCommand(Command command, byte[] arguments)
     {
-        byte[] message = ConcatArrays(_startbits, new byte[] { command }, arguments, _endbits);
+        byte[] message = ConcatArrays(_startbits, new byte[] { (byte)command }, arguments, _endbits);
         try
         {
-            serialPort.Write(message, 0, message.Length);
+            _serialPort.Write(message, 0, message.Length);
             //Console.Write($"Sent Message: {ByteArrayToHexString(message)}\n");
         }
         catch (Exception e)
@@ -265,7 +271,7 @@ public class RGBController
         }
         
     }
-    private void SendCommand(byte command, byte argument)
+    private void SendCommand(Command command, byte argument)
     {
         SendCommand(command, new byte[] { argument });
     }
