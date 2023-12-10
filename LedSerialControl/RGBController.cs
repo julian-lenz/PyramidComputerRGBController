@@ -88,8 +88,9 @@ public class RGBController
     private const int _databits = 8;
     private SerialPort _serialPort;
     
-    private byte[] _startbits = StringToByteArray("5AFF");
-    private byte[] _endbits = StringToByteArray("A5");
+    private byte[] _startbits = { 0x5A, 0xFF };
+    private byte[] _endbits = { 0xA5 };
+    
     // Commands
     private byte _setColorB0 = Convert.ToByte("CA", 16);
     private byte _changeFlashingColorsB0 = Convert.ToByte("D3", 16);
