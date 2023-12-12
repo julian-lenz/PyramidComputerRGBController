@@ -67,7 +67,7 @@ public class RGBController
         /// <param name="values">Byte Array of length 4 with values for {red, green, blue, white}</param>
         public static implicit operator RgbwValue(byte[] values)
         {
-            if (values.Length != 4)
+            if (values.Length < 4)
                 throw new ArgumentException("Byte Array must be of length 4");
             return new RgbwValue(values[0], values[1], values[2], values[3]);
         }
@@ -91,14 +91,7 @@ public class RGBController
     private byte[] _startbits = { 0x5A, 0xFF };
     private byte[] _endbits = { 0xA5 };
     
-    // Commands
-    private byte _setColorB0 = Convert.ToByte("CA", 16);
-    private byte _changeFlashingColorsB0 = Convert.ToByte("D3", 16);
-    private byte _modeB0 = Convert.ToByte("D6", 16);
-    private byte _flashingPeriod = Convert.ToByte("E5", 16);
-    private byte _setID = Convert.ToByte("AE", 16);
-    private byte _readID = Convert.ToByte("BE", 16);
-    
+
     private const byte _off = 0;
     private const byte _on = 1;
     
