@@ -9,7 +9,7 @@ class Program
     static void Main()
     { 
         const int fadetime = 1; 
-        var rgbController = new LedSerialControl.RGBController("COM4");
+        var rgbController = new RGBController("COM4");
         rgbController.SetColorRgbw(0, 0, 0, 0);
         Thread.Sleep(500);
         rgbController.SetFlashingColors(RGBController.ColorNames.Yellow, RGBController.ColorNames.White);
@@ -19,7 +19,7 @@ class Program
         rgbController.SetFlashingPeriod(10);
         Thread.Sleep(3000);
         rgbController.SetFlashing(false);
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 1; i++)
         {
             // Start with red
             byte r = 255, g = 0, b = 0;
